@@ -7,19 +7,18 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"path/filepath"
-	"text/template"
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/mikesss/uwt/uwt"
 	"github.com/wsxiaoys/terminal/color"
 )
 
 var (
 	addr = flag.String("addr", "localhost:8080", "http service address")
 	dir  = flag.String("dir", "messages/", "messages directory")
-	env  = make(map[string]string)
-	t    = template.New("")
+	env  = uwt.NewEnvironment()
+	mc   = uwt.NewMessageCollection()
 )
 
 func main() {
@@ -36,6 +35,7 @@ func main() {
 	if err != nil {
 		log.Fatal("dial:", err)
 	}
+
 	defer c.Close()
 
 	done := make(chan struct{})
@@ -80,7 +80,7 @@ func main() {
 		}
 	}()
 
-	loadTemplates()
+	mc.Load(*dir)
 
 	for {
 		var cmd, arg1, arg2 string
@@ -89,59 +89,25 @@ func main() {
 
 		switch cmd {
 		case "print":
-			PrintMessage(arg1)
+			msg, err := mc.Message(arg1, env)
+			if err != nil {
+				color.Printf("@r%s\n@|> ", err)
+			} else {
+				color.Printf("%s\n> ", msg)
+			}
 		case "send":
-			SendMessage(arg1, c)
+			if err := mc.SendMessage(arg1, env, c); err != nil {
+				color.Printf("@r%s\n@|> ", err)
+			} else {
+				color.Printf("@gSent!\n> ")
+			}
 		case "env":
 			if arg2 == "" {
-				PrintEnv(arg1)
+				color.Printf("%s", env.Get(arg1))
 			} else {
-				SetEnv(arg1, arg2)
+				env.Set(arg1, arg2)
 			}
 		}
 	}
 
-}
-
-func loadTemplates() {
-	pattern := filepath.Join(*dir, "*")
-
-	t.ParseGlob(pattern)
-
-	fmt.Printf("Loaded %d templates\n", len(t.Templates()))
-}
-
-func PrintEnv(varname string) {
-	fmt.Printf("%s: %s\n", varname, env[varname])
-}
-
-func SetEnv(varname string, value string) {
-	env[varname] = value
-}
-
-func PrintMessage(name string) {
-	err := t.ExecuteTemplate(os.Stdout, name, env)
-	if err != nil {
-		color.Printf("@r%s\n", err)
-	}
-}
-
-func SendMessage(name string, c *websocket.Conn) {
-	w, err := c.NextWriter(websocket.TextMessage)
-	if err != nil {
-		color.Printf("@r%s\n", err)
-		return
-	}
-
-	err = t.ExecuteTemplate(w, name, env)
-	if err != nil {
-		color.Printf("@r%s\n", err)
-		return
-	}
-
-	if err := w.Close(); err != nil {
-		color.Printf("@r%s\n", err)
-	}
-
-	color.Println("@{g}Sent!")
 }

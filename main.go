@@ -54,6 +54,9 @@ func main() {
 	}()
 
 	go func() {
+		defer os.Exit(0)
+		defer c.Close()
+
 		for {
 			select {
 			case <-interrupt:
@@ -66,12 +69,12 @@ func main() {
 					log.Println("write close:", err)
 					return
 				}
+
 				select {
 				case <-done:
 				case <-time.After(time.Second):
 				}
-				c.Close()
-				os.Exit(0)
+
 				return
 			}
 		}

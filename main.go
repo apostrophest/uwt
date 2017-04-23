@@ -135,5 +135,9 @@ func SendMessage(name string, c *websocket.Conn) {
 		return
 	}
 
+	if err := w.Close(); err != nil {
+		color.Printf("@r%s\n", err)
+	}
+
 	color.Println("@{g}Sent!")
 }

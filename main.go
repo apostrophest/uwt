@@ -46,10 +46,10 @@ func main() {
 		for {
 			_, message, err := c.ReadMessage()
 			if err != nil {
-				log.Println("read:", err)
+				color.Printf("\n@r%s\n", err)
 				return
 			}
-			log.Printf("recv: %s", message)
+			color.Printf("\n@y< recv:\n%s\n@|> ", message)
 		}
 	}()
 
@@ -57,7 +57,8 @@ func main() {
 		for {
 			select {
 			case <-interrupt:
-				log.Println("interrupt")
+				color.Printf("\n@rInterrupt")
+
 				// To cleanly close a connection, a client should send a close
 				// frame and wait for the server to close the connection.
 				err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
